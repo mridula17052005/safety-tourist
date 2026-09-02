@@ -116,3 +116,23 @@ export interface SafetyTip {
   priority: number;
   created_at: string;
 }
+
+export type DangerZoneSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type DangerZoneType = 'general' | 'crime' | 'nightlife' | 'scam' | 'natural_hazard' | 'civil_unrest';
+
+export interface DangerZone {
+  id: string;
+  name: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+  severity: DangerZoneSeverity;
+  zone_type: DangerZoneType;
+  country: string;
+  city: string;
+  is_active: boolean;
+  reported_by: string | null;
+  created_at: string;
+  updated_at: string;
+}

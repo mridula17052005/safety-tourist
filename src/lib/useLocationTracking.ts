@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { extractFeatures, predict, computeSafetyScore, type SafetyFeatures, type DetectionResult } from '@/lib/safetyModel';
 import { generateRecommendations } from '@/lib/safetyTips';
 import { predictWithData, predictFromHistory, type PredictionResponse } from '@/lib/api';
-import type { LocationUpdate, Alert, EmergencyContact } from '@/lib/types';
+import type { LocationUpdate, Alert, EmergencyContact, DangerZone } from '@/lib/types';
 import { haversineDistance, formatSpeed, timeAgo, cn } from '@/lib/utils';
 
 interface LocationPoint {
@@ -29,6 +29,7 @@ interface UseLocationTrackingResult {
   locationHistory: LocationPoint[];
   speed: number;
   batteryLevel: number;
+  nearbyDangerZones: DangerZone[];
 }
 
 const TRACKING_INTERVAL_MS = 15000;
@@ -48,6 +49,9 @@ export function useLocationTracking(): UseLocationTrackingResult {
   const [recommendations, setRecommendations] = useState<ReturnType<typeof generateRecommendations>>([]);
   const [recentAlerts, setRecentAlerts] = useState<Alert[]>([]);
   const [sosTriggered, setSosTriggered] = useState(false);
+  const [dangerZones, setDangerZones] = useState<DangerZone[]>([]);
+  const [nearbyDangerZones, setNearbyDangerZones] = useState<DangerZone[]>([]);
+  const lastZoneAlertRef = useRef<number>(0);
 
   const lastApiCallRef = useRef<number>(0);
   const lastAlertTimeRef = useRef<number>(0);
@@ -257,6 +261,48 @@ export function useLocationTracking(): UseLocationTrackingResult {
     };
   }, []);
 
+  // Fetch danger zones on mount
+  useEffect(() => {
+    const fetchZones = async () => {
+      const { data } = await supabase
+        .from('danger_zones')
+        .select('*')
+        .eq('is_active', true);
+      if (data) setDangerZones(data as DangerZone[]);
+    };
+    fetchZones();
+  }, []);
+
+  // Check proximity to danger zones whenever position updates
+  useEffect(() => {
+    if (!currentPos || dangerZones.length === 0) {
+      setNearbyDangerZones([]);
+      return;
+    }
+    const nearby = dangerZones.filter((z) =>
+      haversineDistance(currentPos.lat, currentPos.lng, z.latitude, z.longitude) <= z.radius_meters + 300,
+    );
+    setNearbyDangerZones(nearby);
+
+    // Auto-notify if entering a critical/high zone and cooldown passed
+    if (nearby.length > 0 && session?.user) {
+      const now = Date.now();
+      const cooldownMs = 120000; // 2 minutes
+      if (now - lastZoneAlertRef.current > cooldownMs) {
+        lastZoneAlertRef.current = now;
+        const worst = nearby.reduce((prev, cur) =>
+          cur.severity === 'critical' || (cur.severity === 'high' && prev.severity !== 'critical') ? cur : prev,
+        );
+        supabase.from('notifications').insert({
+          user_id: session.user.id,
+          title: `Danger Zone Warning: ${worst.name}`,
+          message: `You are near a ${worst.severity} risk area. ${worst.description}`,
+          type: 'emergency',
+        }).then(() => fetchRecentAlerts());
+      }
+    }
+  }, [currentPos, dangerZones, session, fetchRecentAlerts]);
+
   useEffect(() => {
     fetchRecentAlerts();
   }, [fetchRecentAlerts]);
@@ -275,5 +321,6 @@ export function useLocationTracking(): UseLocationTrackingResult {
     locationHistory,
     speed,
     batteryLevel,
+    nearbyDangerZones,
   };
 }

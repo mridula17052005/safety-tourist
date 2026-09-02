@@ -140,6 +140,38 @@ export function categoryIcon(category: string): string {
   return icons[category] ?? 'Shield';
 }
 
+export function dangerZoneTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    general: 'General Risk',
+    crime: 'Crime Area',
+    nightlife: 'Nightlife Risk',
+    scam: 'Tourist Scam',
+    natural_hazard: 'Natural Hazard',
+    civil_unrest: 'Civil Unrest',
+  };
+  return labels[type] ?? type;
+}
+
+export function dangerZoneSeverityColor(severity: string): string {
+  switch (severity) {
+    case 'critical': return 'bg-red-500 text-white';
+    case 'high': return 'bg-orange-500 text-white';
+    case 'medium': return 'bg-amber-400 text-amber-950';
+    case 'low': return 'bg-blue-400 text-blue-950';
+    default: return 'bg-gray-400 text-white';
+  }
+}
+
+export function dangerZoneSeverityBg(severity: string): string {
+  switch (severity) {
+    case 'critical': return 'bg-red-50 border-red-200';
+    case 'high': return 'bg-orange-50 border-orange-200';
+    case 'medium': return 'bg-amber-50 border-amber-200';
+    case 'low': return 'bg-blue-50 border-blue-200';
+    default: return 'bg-slate-50 border-slate-200';
+  }
+}
+
 export function downloadFile(data: Blob, filename: string) {
   const url = URL.createObjectURL(data);
   const a = document.createElement('a');

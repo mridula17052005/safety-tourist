@@ -15,6 +15,8 @@ import { IncidentReportPage } from '@/pages/IncidentReportPage';
 import { NearbyServicesPage } from '@/pages/NearbyServicesPage';
 import { SafetyTipsPage } from '@/pages/SafetyTipsPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
+import { DangerZonesPage } from '@/pages/DangerZonesPage';
+import { AdminDangerZonesPage } from '@/pages/AdminDangerZonesPage';
 import { AdminDashboard } from '@/pages/AdminDashboard';
 import { Spinner } from '@/components/ui';
 import type { UserRole } from '@/lib/types';
@@ -67,6 +69,7 @@ export default function App() {
               <Route path="/app/hospitals" element={<HospitalsPage />} />
               <Route path="/app/police" element={<PoliceStationsPage />} />
               <Route path="/app/tips" element={<SafetyTipsPage />} />
+              <Route path="/app/danger-zones" element={<DangerZonesPage />} />
               <Route path="/app/notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
@@ -83,6 +86,7 @@ export default function App() {
               }
             >
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/danger-zones" element={<AdminDangerZonesPage />} />
               <Route path="/admin/notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
