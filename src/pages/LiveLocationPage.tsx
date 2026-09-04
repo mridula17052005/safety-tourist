@@ -4,7 +4,7 @@ import {
   Crosshair, Play, Square, Siren, Navigation, Gauge,
   Battery, AlertTriangle, Activity, ChevronLeft, Maximize2,
 } from 'lucide-react';
-import { useLocationTracking } from '@/lib/useLocationTracking';
+import { useMonitoring } from '@/lib/monitoring';
 import { GoogleMap } from '@/components/GoogleMap';
 import { Card, Button, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -16,7 +16,7 @@ export function LiveLocationPage() {
   const {
     currentPos, isTracking, error, startTracking, stopTracking, triggerSOS,
     safetyScore, detection, speed, batteryLevel, recentAlerts,
-  } = useLocationTracking();
+  } = useMonitoring();
 
   const severityColor = (s: string) => {
     switch (s) {
