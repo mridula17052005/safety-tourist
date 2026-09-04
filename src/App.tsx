@@ -19,6 +19,7 @@ import { DangerZonesPage } from '@/pages/DangerZonesPage';
 import { AdminDangerZonesPage } from '@/pages/AdminDangerZonesPage';
 import { AdminDashboard } from '@/pages/AdminDashboard';
 import { Spinner } from '@/components/ui';
+import { MonitoringProvider } from '@/lib/monitoring';
 import type { UserRole } from '@/lib/types';
 
 function ProtectedRoute({ allowRole }: { allowRole?: UserRole }) {
@@ -55,7 +56,9 @@ export default function App() {
             <Route
               element={
                 <NotificationProvider>
-                  <AppLayout />
+                  <MonitoringProvider>
+                    <AppLayout />
+                  </MonitoringProvider>
                 </NotificationProvider>
               }
             >
@@ -81,7 +84,9 @@ export default function App() {
             <Route
               element={
                 <NotificationProvider>
-                  <AppLayout />
+                  <MonitoringProvider>
+                    <AppLayout />
+                  </MonitoringProvider>
                 </NotificationProvider>
               }
             >

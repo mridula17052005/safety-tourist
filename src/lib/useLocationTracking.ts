@@ -35,7 +35,7 @@ interface UseLocationTrackingResult {
 const TRACKING_INTERVAL_MS = 15000;
 const HISTORY_LIMIT = 20;
 
-export function useLocationTracking(): UseLocationTrackingResult {
+export function useLocationTrackingBase(): UseLocationTrackingResult {
   const { session } = useAuth();
   const watchIdRef = useRef<number | null>(null);
   const [isTracking, setIsTracking] = useState(false);
@@ -52,6 +52,8 @@ export function useLocationTracking(): UseLocationTrackingResult {
   const [dangerZones, setDangerZones] = useState<DangerZone[]>([]);
   const [nearbyDangerZones, setNearbyDangerZones] = useState<DangerZone[]>([]);
   const lastZoneAlertRef = useRef<number>(0);
+  const lastShakeRef = useRef<number>(0);
+  const shakeCountRef = useRef(0);
 
   const lastApiCallRef = useRef<number>(0);
   const lastAlertTimeRef = useRef<number>(0);
@@ -254,12 +256,35 @@ export function useLocationTracking(): UseLocationTrackingResult {
   }, [session, currentPos, createNotification, getEmergencyContacts, fetchRecentAlerts]);
 
   useEffect(() => {
+    const handleMotion = (event: DeviceMotionEvent) => {
+      const acceleration = event.accelerationIncludingGravity;
+      if (!acceleration) return;
+      const magnitude = Math.sqrt(
+        (acceleration.x ?? 0) ** 2 +
+        (acceleration.y ?? 0) ** 2 +
+        (acceleration.z ?? 0) ** 2,
+      );
+      const now = Date.now();
+      if (magnitude < 22 || now - lastShakeRef.current < 450) return;
+      lastShakeRef.current = now;
+      shakeCountRef.current += 1;
+      if (shakeCountRef.current >= 3) {
+        shakeCountRef.current = 0;
+        triggerSOS();
+      }
+      window.setTimeout(() => {
+        shakeCountRef.current = 0;
+      }, 1800);
+    };
+
+    window.addEventListener('devicemotion', handleMotion);
     return () => {
+      window.removeEventListener('devicemotion', handleMotion);
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, []);
+  }, [triggerSOS]);
 
   // Fetch danger zones on mount
   useEffect(() => {

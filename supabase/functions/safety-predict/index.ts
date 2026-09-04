@@ -17,6 +17,8 @@ interface PredictionInput {
   distance_from_last: number;
   time_since_last_update: number;
   acceleration: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface TreeVote {
@@ -33,11 +35,26 @@ interface PredictionResult {
   message: string;
   tree_votes: TreeVote[];
   is_emergency: boolean;
+  danger_zone_alert?: {
+    zone_name: string;
+    zone_severity: string;
+    distance: number;
+  };
 }
 
-function normalize(value: number, min: number, max: number): number {
-  if (max === min) return 0;
-  return Math.max(0, Math.min(1, (value - min) / (max - min)));
+// ============================================================
+// Haversine distance (meters)
+// ============================================================
+
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // ============================================================
@@ -235,6 +252,99 @@ function predict(f: PredictionInput): PredictionResult {
   };
 }
 
+// ============================================================
+// DANGER ZONE PROXIMITY CHECK
+// ============================================================
+
+async function checkDangerZoneProximity(
+  supabase: any,
+  lat: number,
+  lng: number,
+): Promise<PredictionResult["danger_zone_alert"] | null> {
+  const { data: zones } = await supabase
+    .from("danger_zones")
+    .select("name, severity, latitude, longitude, radius_meters")
+    .eq("is_active", true);
+
+  if (!zones || zones.length === 0) return null;
+
+  let nearest: { name: string; severity: string; distance: number } | null = null;
+
+  for (const zone of zones) {
+    const dist = haversineDistance(lat, lng, zone.latitude, zone.longitude);
+    if (dist <= zone.radius_meters + 300) {
+      if (!nearest || dist < nearest.distance) {
+        nearest = { name: zone.name, severity: zone.severity, distance: dist };
+      }
+    }
+  }
+
+  return nearest
+    ? { zone_name: nearest.name, zone_severity: nearest.severity, distance: nearest.distance }
+    : null;
+}
+
+// ============================================================
+// NOTIFY EMERGENCY CONTACTS
+// ============================================================
+
+async function notifyEmergencyContacts(
+  supabase: any,
+  userId: string,
+  alertId: string | null,
+  alertMessage: string,
+  severity: string,
+  lat?: number,
+  lng?: number,
+  dangerZoneName?: string,
+): Promise<void> {
+  const { data: contacts } = await supabase
+    .from("emergency_contacts")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (!contacts || contacts.length === 0) return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const touristName = profile?.full_name || "A tourist";
+  const locationStr = lat && lng ? ` Location: https://maps.google.com/?q=${lat},${lng}` : "";
+  const zoneStr = dangerZoneName ? ` Danger zone: ${dangerZoneName}.` : "";
+
+  const messageContent = `EMERGENCY ALERT (${severity.toUpperCase()}): ${touristName} may be in danger. ${alertMessage}.${zoneStr}${locationStr}`;
+
+  for (const contact of contacts) {
+    // Create emergency_response record
+    await supabase.from("emergency_responses").insert({
+      alert_id: alertId,
+      responder_type: "emergency_contact",
+      responder_name: contact.name,
+      status: "dispatched",
+      notes: `Auto-notified: ${contact.phone}${contact.email ? `, ${contact.email}` : ""}`,
+    });
+
+    // Create contact_alert tracking record
+    const method = contact.email ? "email" : "push";
+    await supabase.from("contact_alerts").insert({
+      alert_id: alertId,
+      contact_id: contact.id,
+      user_id: userId,
+      delivery_method: method,
+      delivery_status: "sent",
+      message_content: messageContent,
+      sent_at: new Date().toISOString(),
+    });
+  }
+}
+
+// ============================================================
+// MAIN HANDLER
+// ============================================================
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -310,9 +420,24 @@ Deno.serve(async (req: Request) => {
           ? (Date.now() - new Date(latest.created_at).getTime()) / 1000
           : 0,
         acceleration,
+        latitude: lat,
+        longitude: lng,
       };
 
       const result = predict(input);
+
+      // Check danger zone proximity
+      if (lat !== 0 && lng !== 0) {
+        const zoneAlert = await checkDangerZoneProximity(supabase, lat, lng);
+        if (zoneAlert) {
+          result.danger_zone_alert = zoneAlert;
+          if (zoneAlert.zone_severity === "critical" || zoneAlert.zone_severity === "high") {
+            result.is_emergency = true;
+            result.severity = zoneAlert.zone_severity as PredictionResult["severity"];
+            result.message = `Tourist entered danger zone: ${zoneAlert.zone_name}. ${result.message}`;
+          }
+        }
+      }
 
       if (result.is_emergency) {
         const { data: alertData } = await supabase
@@ -331,6 +456,7 @@ Deno.serve(async (req: Request) => {
               battery_level: input.battery_level,
               hour_of_day: input.hour_of_day,
               acceleration: input.acceleration,
+              danger_zone: result.danger_zone_alert?.zone_name || null,
             },
             message: result.message,
             status: "active",
@@ -345,20 +471,16 @@ Deno.serve(async (req: Request) => {
           type: "emergency",
         });
 
-        const { data: contacts } = await supabase
-          .from("emergency_contacts")
-          .select("*")
-          .eq("user_id", userId);
-
-        for (const contact of contacts || []) {
-          await supabase.from("emergency_responses").insert({
-            alert_id: (alertData as any)?.id,
-            responder_type: "emergency_contact",
-            responder_name: contact.name,
-            status: "dispatched",
-            notes: `Auto-notified: ${contact.phone}${contact.email ? `, ${contact.email}` : ""}`,
-          });
-        }
+        await notifyEmergencyContacts(
+          supabase,
+          userId,
+          (alertData as any)?.id ?? null,
+          result.message,
+          result.severity,
+          lat,
+          lng,
+          result.danger_zone_alert?.zone_name,
+        );
       }
 
       return new Response(
@@ -380,9 +502,24 @@ Deno.serve(async (req: Request) => {
         distance_from_last: body.distance_from_last ?? 0,
         time_since_last_update: body.time_since_last_update ?? 0,
         acceleration: body.acceleration ?? 0,
+        latitude: body.latitude,
+        longitude: body.longitude,
       };
 
       const result = predict(input);
+
+      // Check danger zone proximity if coordinates provided
+      if (input.latitude != null && input.longitude != null) {
+        const zoneAlert = await checkDangerZoneProximity(supabase, input.latitude, input.longitude);
+        if (zoneAlert) {
+          result.danger_zone_alert = zoneAlert;
+          if (zoneAlert.zone_severity === "critical" || zoneAlert.zone_severity === "high") {
+            result.is_emergency = true;
+            result.severity = zoneAlert.zone_severity as PredictionResult["severity"];
+            result.message = `Tourist entered danger zone: ${zoneAlert.zone_name}. ${result.message}`;
+          }
+        }
+      }
 
       if (result.is_emergency && body.auto_alert !== false) {
         const { data: alertData } = await supabase
@@ -401,6 +538,7 @@ Deno.serve(async (req: Request) => {
               battery_level: input.battery_level,
               hour_of_day: input.hour_of_day,
               acceleration: input.acceleration,
+              danger_zone: result.danger_zone_alert?.zone_name || null,
             },
             message: result.message,
             status: "active",
@@ -415,20 +553,16 @@ Deno.serve(async (req: Request) => {
           type: "emergency",
         });
 
-        const { data: contacts } = await supabase
-          .from("emergency_contacts")
-          .select("*")
-          .eq("user_id", userId);
-
-        for (const contact of contacts || []) {
-          await supabase.from("emergency_responses").insert({
-            alert_id: (alertData as any)?.id,
-            responder_type: "emergency_contact",
-            responder_name: contact.name,
-            status: "dispatched",
-            notes: `Auto-notified: ${contact.phone}${contact.email ? `, ${contact.email}` : ""}`,
-          });
-        }
+        await notifyEmergencyContacts(
+          supabase,
+          userId,
+          (alertData as any)?.id ?? null,
+          result.message,
+          result.severity,
+          body.latitude,
+          body.longitude,
+          result.danger_zone_alert?.zone_name,
+        );
       }
 
       return new Response(

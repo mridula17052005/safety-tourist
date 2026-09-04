@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { useNotifications } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui';
+import { RealtimeMonitor } from '@/components/RealtimeMonitor';
 
 interface NavItem {
   label: string;
@@ -145,6 +146,7 @@ export function AppLayout() {
         <main className="flex-1 p-4 lg:p-8">
           <Outlet />
         </main>
+        <RealtimeMonitor />
       </div>
     </div>
   );

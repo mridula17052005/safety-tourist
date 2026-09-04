@@ -4,7 +4,7 @@ import {
   AlertTriangle, MapPin, Navigation, Radio, TrendingDown, TrendingUp,
   Siren, Clock, Cpu, Eye,
 } from 'lucide-react';
-import { useLocationTracking } from '@/lib/useLocationTracking';
+import { useMonitoring } from '@/lib/monitoring';
 import { useAuth } from '@/lib/auth';
 import { GoogleMap } from '@/components/GoogleMap';
 import { Card, Button, Badge, EmptyState } from '@/components/ui';
@@ -14,7 +14,7 @@ import {
 
 export function TouristDashboard() {
   const { profile } = useAuth();
-  const tracking = useLocationTracking();
+  const tracking = useMonitoring();
   const mapRef = useRef<{ panTo: (lat: number, lng: number) => void; setMarkers: (m: any[]) => void }>(null);
 
   const markers = useMemo(() => {

@@ -1,0 +1,2 @@
+[functions.safety-predict]
+verify_jwt = true
