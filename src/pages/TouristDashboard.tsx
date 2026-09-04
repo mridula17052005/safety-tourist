@@ -54,7 +54,7 @@ export function TouristDashboard() {
               : 'Turn on live tracking to enable AI safety monitoring'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {tracking.isTracking ? (
             <Button variant="danger" onClick={tracking.stopTracking}>
               <Radio className="w-4 h-4" />
@@ -66,6 +66,13 @@ export function TouristDashboard() {
               Start Live Tracking
             </Button>
           )}
+          <Button
+            variant={tracking.isTracking ? 'outline' : 'secondary'}
+            onClick={tracking.isTracking ? tracking.stopTracking : tracking.startTracking}
+          >
+            <ShieldCheck className={cn('w-4 h-4', tracking.isTracking ? 'text-teal-600' : 'text-slate-400')} />
+            {tracking.isTracking ? 'Monitoring On' : 'Monitoring Off'}
+          </Button>
         </div>
       </div>
 
