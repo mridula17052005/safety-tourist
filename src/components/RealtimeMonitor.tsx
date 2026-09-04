@@ -12,7 +12,7 @@ export function RealtimeMonitor() {
   const statusColor = danger ? 'bg-red-600' : monitoring.isTracking ? 'bg-teal-600' : 'bg-slate-700';
 
   return (
-    <div className="fixed bottom-4 right-4 z-30 w-[calc(100%-2rem)] max-w-sm">
+    <div className="fixed bottom-16 right-4 z-[9999] w-[calc(100%-2rem)] max-w-sm">
       {expanded && (
         <div className="mb-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl animate-in slide-in-from-bottom-2 duration-200">
           <div className="flex items-start justify-between gap-3">
