@@ -17,6 +17,7 @@ import { SafetyTipsPage } from '@/pages/SafetyTipsPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { DangerZonesPage } from '@/pages/DangerZonesPage';
 import { DestinationSafetyPage } from '@/pages/DestinationSafetyPage';
+import { BuddyGroupsPage } from '@/pages/BuddyGroupsPage';
 import { AdminDangerZonesPage } from '@/pages/AdminDangerZonesPage';
 import { AdminDashboard } from '@/pages/AdminDashboard';
 import { Spinner } from '@/components/ui';
@@ -75,6 +76,7 @@ export default function App() {
               <Route path="/app/tips" element={<SafetyTipsPage />} />
               <Route path="/app/danger-zones" element={<DangerZonesPage />} />
               <Route path="/app/destination-safety" element={<DestinationSafetyPage />} />
+              <Route path="/app/buddy-groups" element={<BuddyGroupsPage />} />
               <Route path="/app/notifications" element={<NotificationsPage />} />
             </Route>
           </Route>

@@ -15,7 +15,7 @@ export interface TripGroup {
 export interface GroupMember extends Profile {
   member_id: string;
   group_id: string;
-  role: 'creator' | 'member';
+  group_role: 'creator' | 'member';
   last_lat: number | null;
   last_lng: number | null;
   last_seen: string | null;
@@ -107,7 +107,7 @@ export function useBuddyGroups() {
       ...profileMap.get(r.user_id)!,
       member_id: r.id,
       group_id: r.group_id,
-      role: r.role as 'creator' | 'member',
+      group_role: r.role as 'creator' | 'member',
       last_lat: r.last_lat,
       last_lng: r.last_lng,
       last_seen: r.last_seen,

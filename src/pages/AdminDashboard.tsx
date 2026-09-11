@@ -107,7 +107,6 @@ export function AdminDashboard() {
     prevAlertIdsRef.current = newCriticalIds;
 
     const profiles = (profilesRes.data as Profile[]) ?? [];
-    const alertsData = (alertsRes.data as Alert[]) ?? [];
     const incidentsData = (incidentsRes.data as Incident[]) ?? [];
 
     // Fetch latest location for each tourist

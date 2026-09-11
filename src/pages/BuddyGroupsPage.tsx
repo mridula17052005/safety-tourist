@@ -91,7 +91,7 @@ export function BuddyGroupsPage() {
     setRemoveTarget(null);
   };
 
-  const isCreator = members.some((m) => m.role === 'creator' && m.id === (activeGroup?.created_by ?? ''));
+  const isCreator = members.some((m) => m.group_role === 'creator' && m.id === (activeGroup?.created_by ?? ''));
 
   if (loading) {
     return (
@@ -238,16 +238,16 @@ export function BuddyGroupsPage() {
                           <span className="font-medium text-slate-800 text-sm truncate">
                             {m.full_name || 'Unknown'}
                           </span>
-                          {m.role === 'creator' && (
+                          {m.group_role === 'creator' && (
                             <Badge className="bg-teal-100 text-teal-700">CREATOR</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
                           <span className="flex items-center gap-1">
                             {m.is_online ? (
-                              <><Wifi className="w-3 h-3 text-green-500" /> Online</>
+                              <span className="flex items-center gap-1"><Wifi className="w-3 h-3 text-green-500" /> Online</span>
                             ) : (
-                              <><WifiOff className="w-3 h-3 text-slate-400" /> Offline
+                              <span className="flex items-center gap-1"><WifiOff className="w-3 h-3 text-slate-400" /> Offline</span>
                             )}
                           </span>
                           {m.last_seen && (
@@ -269,7 +269,7 @@ export function BuddyGroupsPage() {
                           <Navigation className="w-4 h-4" />
                         </a>
                       )}
-                      {isCreator && m.role !== 'creator' && (
+                      {isCreator && m.group_role !== 'creator' && (
                         <button
                           onClick={() => setRemoveTarget(m)}
                           className="p-2 rounded-lg hover:bg-red-50 text-red-400 transition-colors"
