@@ -1,2 +1,5 @@
 [functions.safety-predict]
 verify_jwt = true
+
+[functions.send-emergency-email]
+verify_jwt = true

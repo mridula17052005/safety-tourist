@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LayoutDashboard, Users, Siren, AlertTriangle, Activity,
   MapPin, Shield, Clock, TrendingUp, CheckCircle, XCircle,
-  Phone, Navigation, Eye, RefreshCw,
+  Phone, Navigation, Eye, RefreshCw, Bell, Volume2, VolumeX,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { GoogleMap } from '@/components/GoogleMap';
@@ -11,7 +11,7 @@ import {
   severityColor, statusColor, alertTypeLabel, incidentTypeLabel,
   timeAgo, formatDateTime, cn,
 } from '@/lib/utils';
-import type { Alert, Incident, EmergencyResponse, Profile } from '@/lib/types';
+import type { Alert, Incident, EmergencyResponse, Profile, Notification } from '@/lib/types';
 
 interface TouristWithLocation extends Profile {
   latest_lat?: number;
@@ -22,7 +22,7 @@ interface TouristWithLocation extends Profile {
   latest_time?: string;
 }
 
-type Tab = 'overview' | 'tourists' | 'incidents' | 'alerts';
+type Tab = 'overview' | 'tourists' | 'incidents' | 'alerts' | 'notifications';
 
 export function AdminDashboard() {
   const [tab, setTab] = useState<Tab>('overview');
@@ -46,6 +46,46 @@ export function AdminDashboard() {
   const [responseNotes, setResponseNotes] = useState('');
   const [responseStatus, setResponseStatus] = useState<EmergencyResponse['status']>('dispatched');
   const mapRef = useRef<{ panTo: (lat: number, lng: number) => void; setMarkers: (m: any[]) => void }>(null);
+  const [adminNotifications, setAdminNotifications] = useState<Notification[]>([]);
+  const [muted, setMuted] = useState(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const prevAlertIdsRef = useRef<Set<string>>(new Set());
+
+  const playAlertSound = useCallback(() => {
+    if (muted) return;
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContext();
+      }
+      const ctx = audioCtxRef.current;
+      const now = ctx.currentTime;
+      for (let i = 0; i < 3; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'square';
+        const start = now + i * 0.3;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.15, start + 0.01);
+        gain.gain.linearRampToValueAtTime(0, start + 0.15);
+        osc.start(start);
+        osc.stop(start + 0.15);
+      }
+    } catch {
+      // AudioContext not available
+    }
+  }, [muted]);
+
+  const fetchAdminNotifications = useCallback(async () => {
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setAdminNotifications((data as Notification[]) ?? []);
+  }, []);
 
   const fetchAll = useCallback(async () => {
     const [profilesRes, alertsRes, incidentsRes] = await Promise.all([
@@ -53,6 +93,18 @@ export function AdminDashboard() {
       supabase.from('alerts').select('*').order('created_at', { ascending: false }).limit(50),
       supabase.from('incidents').select('*').order('created_at', { ascending: false }).limit(50),
     ]);
+
+    // Track new critical alerts for sound
+    const alertsData = (alertsRes.data as Alert[]) ?? [];
+    const newCriticalIds = new Set(
+      alertsData.filter((a) => a.severity === 'critical' && a.status === 'active').map((a) => a.id)
+    );
+    const prevIds = prevAlertIdsRef.current;
+    const hasNewCritical = Array.from(newCriticalIds).some((id) => !prevIds.has(id));
+    if (hasNewCritical && prevIds.size > 0) {
+      playAlertSound();
+    }
+    prevAlertIdsRef.current = newCriticalIds;
 
     const profiles = (profilesRes.data as Profile[]) ?? [];
     const alertsData = (alertsRes.data as Alert[]) ?? [];
@@ -103,9 +155,13 @@ export function AdminDashboard() {
 
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(fetchAll, 30000);
+    fetchAdminNotifications();
+    const interval = setInterval(() => {
+      fetchAll();
+      fetchAdminNotifications();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [fetchAll]);
+  }, [fetchAll, fetchAdminNotifications]);
 
   // Real-time alert subscription
   useEffect(() => {
@@ -114,19 +170,30 @@ export function AdminDashboard() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'alerts' },
-        () => fetchAll(),
+        () => {
+          fetchAll();
+          fetchAdminNotifications();
+        },
       )
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'incidents' },
-        () => fetchAll(),
+        () => {
+          fetchAll();
+          fetchAdminNotifications();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        () => fetchAdminNotifications(),
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchAll]);
+  }, [fetchAll, fetchAdminNotifications]);
 
   const openAlert = async (alert: Alert) => {
     setSelectedAlert(alert);
@@ -169,6 +236,22 @@ export function AdminDashboard() {
     setSelectedAlert(null);
   };
 
+  const handleAckNotification = async (notifId: string) => {
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notifId);
+    fetchAdminNotifications();
+  };
+
+  const handleResolveNotification = async (notifId: string) => {
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notifId);
+    fetchAdminNotifications();
+  };
+
   const handleUpdateIncident = async (id: string, status: Incident['status']) => {
     await supabase
       .from('incidents')
@@ -204,10 +287,22 @@ export function AdminDashboard() {
             Monitor tourists, incidents, alerts, and emergency responses in real time
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchAll} loading={loading}>
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMuted((m) => !m)}
+            className={cn(
+              'p-2 rounded-lg transition-colors',
+              muted ? 'bg-slate-100 text-slate-400 hover:bg-slate-200' : 'bg-red-50 text-red-600 hover:bg-red-100',
+            )}
+            title={muted ? 'Unmute alert sound' : 'Mute alert sound'}
+          >
+            {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
+          <Button variant="outline" size="sm" onClick={fetchAll} loading={loading}>
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -222,7 +317,7 @@ export function AdminDashboard() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200">
-        {(['overview', 'tourists', 'incidents', 'alerts'] as Tab[]).map((t) => (
+        {(['overview', 'tourists', 'incidents', 'alerts', 'notifications'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -399,6 +494,76 @@ export function AdminDashboard() {
                       <option value="resolved">Resolved</option>
                       <option value="dismissed">Dismissed</option>
                     </Select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Notifications Tab */}
+      {tab === 'notifications' && (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-teal-600" />
+              <h2 className="font-semibold text-slate-900">Admin Notifications</h2>
+            </div>
+            <span className="text-xs text-slate-400">
+              {adminNotifications.filter((n) => !n.read).length} unread
+            </span>
+          </div>
+          {adminNotifications.length === 0 ? (
+            <EmptyState
+              icon={<Bell className="w-7 h-7" />}
+              title="No notifications"
+              description="Panic alerts, danger-zone alerts, and buddy safety events will appear here."
+            />
+          ) : (
+            <div className="space-y-2">
+              {adminNotifications.map((n) => (
+                <div
+                  key={n.id}
+                  className={cn(
+                    'p-3 rounded-lg border transition-all',
+                    n.type === 'emergency' ? 'border-red-200 bg-red-50' : !n.read ? 'border-l-4 border-l-teal-500 border-slate-200' : 'border-slate-200',
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+                      n.type === 'emergency' ? 'bg-red-100' : n.type === 'alert' ? 'bg-amber-100' : n.type === 'warning' ? 'bg-orange-100' : 'bg-blue-100',
+                    )}>
+                      {n.type === 'emergency' ? (
+                        <Siren className="w-4 h-4 text-red-600" />
+                      ) : n.type === 'alert' ? (
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      ) : n.type === 'warning' ? (
+                        <AlertTriangle className="w-4 h-4 text-orange-600" />
+                      ) : (
+                        <Bell className="w-4 h-4 text-blue-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-semibold text-slate-900 text-sm">{n.title}</h3>
+                        <span className="text-xs text-slate-400 shrink-0">{timeAgo(n.created_at)}</span>
+                      </div>
+                      <p className="text-sm text-slate-600 mt-0.5">{n.message}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        {!n.read && (
+                          <Button size="sm" variant="outline" onClick={() => handleAckNotification(n.id)}>
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Acknowledge
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => handleResolveNotification(n.id)}>
+                          <XCircle className="w-3.5 h-3.5" />
+                          Resolve
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}

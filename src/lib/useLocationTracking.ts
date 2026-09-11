@@ -226,8 +226,8 @@ export function useLocationTrackingBase(): UseLocationTrackingResult {
         confidence_score: 1.0,
         latitude: currentPos.lat,
         longitude: currentPos.lng,
-        features: { manual: true, source: 'sos_button' },
-        message: 'MANUAL SOS triggered by tourist — immediate assistance required',
+        features: { manual: true, source: 'panic_button' },
+        message: 'PANIC BUTTON triggered by tourist — immediate assistance required',
         status: 'active',
       })
       .select('*')
@@ -235,20 +235,64 @@ export function useLocationTrackingBase(): UseLocationTrackingResult {
 
     await createNotification(
       session.user.id,
-      'SOS Alert Sent',
+      'Panic Alert Sent',
       'Your live location and emergency details have been sent to your contacts and authorities.',
       'emergency',
     );
 
     const contacts = await getEmergencyContacts();
+    const now = new Date().toISOString();
+    const mapLink = `https://www.google.com/maps?q=${currentPos.lat},${currentPos.lng}`;
+
     for (const contact of contacts) {
       await supabase.from('emergency_responses').insert({
         alert_id: (alertData as Alert)?.id,
         responder_type: 'emergency_contact',
         responder_name: contact.name,
         status: 'dispatched',
-        notes: `SOS notification sent to: ${contact.phone}${contact.email ? `, ${contact.email}` : ''}`,
+        notes: `Panic alert sent to: ${contact.phone}${contact.email ? `, ${contact.email}` : ''}`,
       });
+
+      if (contact.email) {
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          await supabase.functions.invoke('send-emergency-email', {
+            body: {
+              to: contact.email,
+              touristName: profileData?.full_name || 'A SafeTour user',
+              message: 'PANIC BUTTON triggered — immediate assistance required',
+              time: now,
+              latitude: currentPos.lat,
+              longitude: currentPos.lng,
+              mapLink,
+            },
+          });
+        } catch {
+          // Email send failure should not block the SOS flow
+        }
+      }
+    }
+
+    // Create notifications for all admins
+    const { data: admins } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'admin');
+
+    if (admins) {
+      for (const admin of admins) {
+        await supabase.from('notifications').insert({
+          user_id: admin.id,
+          title: 'PANIC ALERT — Tourist SOS',
+          message: `A tourist triggered a panic alert at ${currentPos.lat.toFixed(4)}, ${currentPos.lng.toFixed(4)}`,
+          type: 'emergency',
+        });
+      }
     }
 
     fetchRecentAlerts();
