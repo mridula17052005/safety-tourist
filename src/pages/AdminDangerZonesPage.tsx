@@ -393,7 +393,7 @@ export function AdminDangerZonesPage() {
       {/* Add/Edit Modal */}
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setFormError(null); }}
         title={editingZone ? 'Edit Danger Zone' : 'Add Danger Zone'}
         className="max-w-xl"
       >
