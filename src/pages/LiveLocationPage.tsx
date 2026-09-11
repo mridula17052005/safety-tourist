@@ -13,10 +13,24 @@ import type { GoogleMapHandle } from '@/components/GoogleMap';
 export function LiveLocationPage() {
   const navigate = useNavigate();
   const mapRef = useRef<GoogleMapHandle>(null);
+  const [sosConfirming, setSosConfirming] = useState(false);
+  const [sosPressed, setSosPressed] = useState(false);
   const {
     currentPos, isTracking, error, startTracking, stopTracking, triggerSOS,
     safetyScore, detection, speed, batteryLevel, recentAlerts,
   } = useMonitoring();
+
+  const handleSOS = async () => {
+    if (!sosConfirming) {
+      setSosConfirming(true);
+      setTimeout(() => setSosConfirming(false), 3000);
+      return;
+    }
+    setSosPressed(true);
+    await triggerSOS();
+    setSosPressed(false);
+    setSosConfirming(false);
+  };
 
   const severityColor = (s: string) => {
     switch (s) {
@@ -83,13 +97,23 @@ export function LiveLocationPage() {
 
           {/* SOS button overlay */}
           {isTracking && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+              {sosConfirming && (
+                <span className="px-3 py-1 rounded-full bg-red-600 text-white text-xs font-semibold shadow-lg">
+                  Press again to confirm SOS
+                </span>
+              )}
               <button
-                onClick={triggerSOS}
-                className="flex items-center gap-2 px-6 py-3 rounded-full bg-red-600 text-white font-bold shadow-2xl hover:bg-red-700 active:scale-95 transition-all animate-pulse"
+                onClick={handleSOS}
+                disabled={sosPressed}
+                className={cn(
+                  'flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold shadow-2xl active:scale-95 transition-all',
+                  sosConfirming ? 'bg-red-700 animate-pulse ring-4 ring-red-300' : 'bg-red-600 hover:bg-red-700',
+                  sosPressed && 'opacity-50 cursor-not-allowed',
+                )}
               >
                 <Siren className="w-5 h-5" />
-                SOS
+                {sosConfirming ? 'CONFIRM SOS' : 'SOS'}
               </button>
             </div>
           )}

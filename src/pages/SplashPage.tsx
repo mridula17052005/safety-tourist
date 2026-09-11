@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, MapPin, Siren, Brain, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export function SplashPage() {
   const navigate = useNavigate();
@@ -15,14 +16,26 @@ export function SplashPage() {
 
   useEffect(() => {
     if (!loading && session) {
-      const role = session.user.app_metadata?.role;
-      navigate(role === 'admin' ? '/admin' : '/app', { replace: true });
+      (async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        const role = data?.role;
+        navigate(role === 'admin' ? '/admin' : '/app', { replace: true });
+      })();
     }
   }, [loading, session, navigate]);
 
-  const handleEnter = () => {
+  const handleEnter = async () => {
     if (session) {
-      const role = session.user.app_metadata?.role;
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      const role = data?.role;
       navigate(role === 'admin' ? '/admin' : '/app');
     } else {
       navigate('/');

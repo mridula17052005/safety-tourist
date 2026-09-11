@@ -168,21 +168,26 @@ export function AdminDangerZonesPage() {
       reported_by: profile?.id || null,
     };
 
+    let saveError: string | null = null;
+
     if (editingZone) {
       const { error } = await supabase
         .from('danger_zones')
         .update(payload)
         .eq('id', editingZone.id);
-      if (error) setFormError(error.message);
+      saveError = error?.message ?? null;
     } else {
       const { error } = await supabase
         .from('danger_zones')
         .insert(payload);
-      if (error) setFormError(error.message);
+      saveError = error?.message ?? null;
     }
 
     setSaving(false);
-    if (!formError) {
+    if (saveError) {
+      setFormError(saveError);
+    } else {
+      setFormError(null);
       setModalOpen(false);
       fetchZones();
     }

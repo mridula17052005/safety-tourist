@@ -30,7 +30,7 @@ export function ProfilePage() {
         full_name: fullName,
         phone,
         nationality,
-        homeCountry,
+        home_country: homeCountry,
         updated_at: new Date().toISOString(),
       })
       .eq('id', session?.user?.id ?? '');
