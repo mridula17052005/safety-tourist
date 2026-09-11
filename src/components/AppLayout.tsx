@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   Shield, LayoutDashboard, Users, MapPin, Siren, Lightbulb,
   Bell, User as UserIcon, Menu, X, LogOut, AlertTriangle, Settings as SettingsIcon,
-  Navigation, Building2, Crosshair, AlertOctagon,
+  Navigation, Building2, Crosshair, AlertOctagon, Compass,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useNotifications } from '@/lib/notifications';
@@ -26,6 +26,7 @@ const touristNav: NavItem[] = [
   { label: 'Police Stations', path: '/app/police', icon: <Shield className="w-5 h-5" /> },
   { label: 'Nearby Services', path: '/app/nearby', icon: <MapPin className="w-5 h-5" /> },
   { label: 'Danger Zones', path: '/app/danger-zones', icon: <AlertOctagon className="w-5 h-5" /> },
+  { label: 'Destination Safety', path: '/app/destination-safety', icon: <Compass className="w-5 h-5" /> },
   { label: 'Safety Tips', path: '/app/tips', icon: <Lightbulb className="w-5 h-5" /> },
   { label: 'Notifications', path: '/app/notifications', icon: <Bell className="w-5 h-5" /> },
   { label: 'Settings', path: '/app/settings', icon: <SettingsIcon className="w-5 h-5" /> },

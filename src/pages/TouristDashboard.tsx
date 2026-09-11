@@ -1,8 +1,9 @@
 import { useRef, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Shield, ShieldAlert, ShieldCheck, Activity, Battery, Zap,
   AlertTriangle, MapPin, Navigation, Radio, TrendingDown, TrendingUp,
-  Siren, Clock, Cpu, Eye,
+  Siren, Clock, Cpu, Eye, Compass,
 } from 'lucide-react';
 import { useMonitoring } from '@/lib/monitoring';
 import { useAuth } from '@/lib/auth';
@@ -15,6 +16,7 @@ import {
 export function TouristDashboard() {
   const { profile } = useAuth();
   const tracking = useMonitoring();
+  const navigate = useNavigate();
   const mapRef = useRef<{ panTo: (lat: number, lng: number) => void; setMarkers: (m: any[]) => void }>(null);
 
   const markers = useMemo(() => {
@@ -85,6 +87,23 @@ export function TouristDashboard() {
 
       {/* SOS Banner */}
       <SOSButton onTrigger={tracking.triggerSOS} disabled={!tracking.currentPos} />
+
+      {/* Destination Safety card */}
+      <button
+        onClick={() => navigate('/app/destination-safety')}
+        className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-700 text-white hover:shadow-lg hover:scale-[1.01] transition-all"
+      >
+        <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+          <Compass className="w-6 h-6" />
+        </div>
+        <div className="flex-1 text-left">
+          <h3 className="font-bold text-lg">Check Destination Safety</h3>
+          <p className="text-sm text-teal-100">
+            Search a tourist destination and get a current safety assessment
+          </p>
+        </div>
+        <Navigation className="w-5 h-5 text-teal-200" />
+      </button>
 
       {/* Top stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
