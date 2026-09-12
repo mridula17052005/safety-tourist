@@ -8,6 +8,13 @@ interface MapMarkerData {
   label?: string;
 }
 
+interface MapCircleData {
+  lat: number;
+  lng: number;
+  radius: number;
+  color?: string;
+}
+
 export interface GoogleMapHandle {
   panTo: (lat: number, lng: number) => void;
   setMarkers: (markers: MapMarkerData[]) => void;
@@ -17,6 +24,7 @@ interface GoogleMapProps {
   center: { lat: number; lng: number };
   zoom?: number;
   markers?: MapMarkerData[];
+  circles?: MapCircleData[];
   className?: string;
   onMapClick?: (lat: number, lng: number) => void;
 }
@@ -47,12 +55,13 @@ function loadGoogleMaps(): Promise<void> {
 }
 
 export const GoogleMap = forwardRef<GoogleMapHandle, GoogleMapProps>(function GoogleMap(
-  { center, zoom = 14, markers = [], className, onMapClick },
+  { center, zoom = 14, markers = [], circles = [], className, onMapClick },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<GoogleMapsMap | null>(null);
   const markersRef = useRef<GoogleMapsMarker[]>([]);
+  const circlesRef = useRef<GoogleMapsCircle[]>([]);
 
   useImperativeHandle(ref, () => ({
     panTo(lat, lng) {
@@ -132,6 +141,46 @@ export const GoogleMap = forwardRef<GoogleMapHandle, GoogleMapProps>(function Go
       mapRef.current.setZoom(zoom);
     }
   }, [zoom]);
+
+  // Update markers when prop changes
+  useEffect(() => {
+    if (!mapRef.current || !window.google) return;
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    markers.forEach((m) => {
+      const g = window.google!;
+      const marker = new g.maps.Marker({
+        position: { lat: m.lat, lng: m.lng },
+        map: mapRef.current!,
+        title: m.title,
+        label: m.label,
+      });
+      markersRef.current.push(marker);
+    });
+  }, [markers]);
+
+  // Update circles when prop changes
+  useEffect(() => {
+    if (!mapRef.current || !window.google) return;
+    circlesRef.current.forEach((c) => c.setMap(null));
+    circlesRef.current = [];
+
+    circles.forEach((c) => {
+      const g = window.google!;
+      const circle = new g.maps.Circle({
+        center: { lat: c.lat, lng: c.lng },
+        radius: c.radius,
+        strokeColor: c.color ?? '#ef4444',
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: c.color ?? '#ef4444',
+        fillOpacity: 0.15,
+        map: mapRef.current!,
+      });
+      circlesRef.current.push(circle);
+    });
+  }, [circles]);
 
   return <div ref={containerRef} className={className ?? 'w-full h-full min-h-[300px]'} />;
 });

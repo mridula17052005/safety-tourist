@@ -34,6 +34,23 @@ interface GoogleMapsMarker {
   setMap(map: GoogleMapsMap | null): void;
 }
 
+interface GoogleMapsCircleOptions {
+  center: { lat: number; lng: number };
+  radius: number;
+  strokeColor?: string;
+  strokeOpacity?: number;
+  strokeWeight?: number;
+  fillColor?: string;
+  fillOpacity?: number;
+  map?: GoogleMapsMap | null;
+}
+
+interface GoogleMapsCircle {
+  setMap(map: GoogleMapsMap | null): void;
+  setCenter(latLng: { lat: number; lng: number }): void;
+  setRadius(radius: number): void;
+}
+
 interface GoogleMapsLatLng {
   lat(): number;
   lng(): number;
@@ -91,6 +108,7 @@ interface GoogleMapsEvent {
 interface GoogleMapsMaps {
   Map: new (element: HTMLElement, opts: GoogleMapsMapOptions) => GoogleMapsMap;
   Marker: new (opts: GoogleMapsMarkerOptions) => GoogleMapsMarker;
+  Circle: new (opts: GoogleMapsCircleOptions) => GoogleMapsCircle;
   LatLng: new (lat: number, lng: number) => GoogleMapsLatLng;
   places: GoogleMapsPlaces;
   event: GoogleMapsEvent;

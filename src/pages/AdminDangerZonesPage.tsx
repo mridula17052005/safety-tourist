@@ -71,6 +71,20 @@ export function AdminDangerZonesPage() {
 
   useEffect(() => {
     fetchZones();
+
+    // Realtime: immediately reflect zone changes from other admins/sessions
+    const channel = supabase
+      .channel('admin-danger-zones')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'danger_zones' },
+        () => fetchZones(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchZones]);
 
   const filteredZones = useMemo(() => {
@@ -94,10 +108,19 @@ export function AdminDangerZonesPage() {
     return filteredZones.map((z) => ({
       lat: z.latitude,
       lng: z.longitude,
-      title: z.name,
+      title: `${z.name} — ${z.severity.toUpperCase()}`,
       label: z.severity === 'critical' ? '!' : z.severity === 'high' ? 'H' : z.severity === 'medium' ? 'M' : 'L',
     }));
   }, [filteredZones]);
+
+  const dangerCircles = useMemo(() =>
+    filteredZones.filter((z) => z.is_active).map((z) => ({
+      lat: z.latitude,
+      lng: z.longitude,
+      radius: z.radius_meters,
+      color: z.severity === 'critical' ? '#dc2626' : z.severity === 'high' ? '#ea580c' : z.severity === 'medium' ? '#f59e0b' : '#3b82f6',
+    })),
+  [filteredZones]);
 
   const openAddModal = () => {
     setEditingZone(null);
@@ -300,6 +323,7 @@ export function AdminDangerZonesPage() {
               center={filteredZones[0] ? { lat: filteredZones[0].latitude, lng: filteredZones[0].longitude } : { lat: 20, lng: 0 }}
               zoom={2}
               markers={markers}
+              circles={dangerCircles}
               className="w-full h-full"
               onMapClick={handleMapClick}
             />

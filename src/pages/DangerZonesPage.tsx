@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   AlertTriangle, MapPin, Search, Filter, ShieldAlert,
   Navigation, Info, Crosshair, Globe, Loader2,
@@ -38,11 +38,7 @@ export function DangerZonesPage() {
   const [selectedZone, setSelectedZone] = useState<DangerZone | null>(null);
   const mapRef = useRef<{ panTo: (lat: number, lng: number) => void; setMarkers: (m: any[]) => void }>(null);
 
-  useEffect(() => {
-    fetchZones();
-  }, []);
-
-  const fetchZones = async () => {
+  const fetchZones = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('danger_zones')
@@ -54,7 +50,25 @@ export function DangerZonesPage() {
       setZones(data as DangerZone[]);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchZones();
+
+    // Realtime: immediately reflect admin zone changes
+    const channel = supabase
+      .channel('tourist-danger-zones')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'danger_zones' },
+        () => fetchZones(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchZones]);
 
   const detectLocation = () => {
     setLocating(true);
@@ -105,7 +119,7 @@ export function DangerZonesPage() {
     const zoneMarkers = zonesWithDistance.map((z) => ({
       lat: z.latitude,
       lng: z.longitude,
-      title: z.name,
+      title: `⚠ ${z.name} — ${z.severity.toUpperCase()}`,
       label: z.severity === 'critical' ? '!' : z.severity === 'high' ? 'H' : z.severity === 'medium' ? 'M' : 'L',
     }));
     if (currentPos) {
@@ -118,6 +132,15 @@ export function DangerZonesPage() {
     }
     return zoneMarkers;
   }, [zonesWithDistance, currentPos]);
+
+  const dangerCircles = useMemo(() =>
+    zonesWithDistance.map((z) => ({
+      lat: z.latitude,
+      lng: z.longitude,
+      radius: z.radius_meters,
+      color: z.severity === 'critical' ? '#dc2626' : z.severity === 'high' ? '#ea580c' : z.severity === 'medium' ? '#f59e0b' : '#3b82f6',
+    })),
+  [zonesWithDistance]);
 
   const mapCenter = currentPos ?? (zonesWithDistance[0] ? { lat: zonesWithDistance[0].latitude, lng: zonesWithDistance[0].longitude } : { lat: 20, lng: 0 });
 
@@ -216,6 +239,7 @@ export function DangerZonesPage() {
               center={mapCenter}
               zoom={currentPos ? 12 : 2}
               markers={markers}
+              circles={dangerCircles}
               className="w-full h-full"
             />
           </div>

@@ -30,6 +30,7 @@ interface UseLocationTrackingResult {
   speed: number;
   batteryLevel: number;
   nearbyDangerZones: DangerZone[];
+  dangerZones: DangerZone[];
 }
 
 const TRACKING_INTERVAL_MS = 15000;
@@ -340,6 +341,20 @@ export function useLocationTrackingBase(): UseLocationTrackingResult {
       if (data) setDangerZones(data as DangerZone[]);
     };
     fetchZones();
+
+    // Realtime: immediately reflect admin zone changes
+    const channel = supabase
+      .channel('danger-zones-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'danger_zones' },
+        () => fetchZones(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Check proximity to danger zones whenever position updates
@@ -391,5 +406,6 @@ export function useLocationTrackingBase(): UseLocationTrackingResult {
     speed,
     batteryLevel,
     nearbyDangerZones,
+    dangerZones,
   };
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Shield, ShieldAlert, ShieldCheck, Activity, Battery, Zap,
   AlertTriangle, MapPin, Navigation, Radio, TrendingDown, TrendingUp,
-  Siren, Clock, Cpu, Eye, Compass,
+  Siren, Clock, Cpu, Eye, Compass, AlertOctagon,
 } from 'lucide-react';
 import { useMonitoring } from '@/lib/monitoring';
 import { useAuth } from '@/lib/auth';
@@ -20,17 +20,34 @@ export function TouristDashboard() {
   const mapRef = useRef<{ panTo: (lat: number, lng: number) => void; setMarkers: (m: any[]) => void }>(null);
 
   const markers = useMemo(() => {
-    if (!tracking.currentPos) return [];
-    const pts = [
-      {
+    const pts: { lat: number; lng: number; title: string; label: string }[] = [];
+    if (tracking.currentPos) {
+      pts.push({
         lat: tracking.currentPos.lat,
         lng: tracking.currentPos.lng,
         title: 'Your current location',
         label: 'Y',
-      },
-    ];
+      });
+    }
+    for (const z of tracking.dangerZones) {
+      pts.push({
+        lat: z.latitude,
+        lng: z.longitude,
+        title: `⚠ ${z.name} — ${z.severity.toUpperCase()}`,
+        label: z.severity === 'critical' ? '!' : z.severity === 'high' ? 'H' : z.severity === 'medium' ? 'M' : 'L',
+      });
+    }
     return pts;
-  }, [tracking.currentPos]);
+  }, [tracking.currentPos, tracking.dangerZones]);
+
+  const dangerCircles = useMemo(() =>
+    tracking.dangerZones.map((z) => ({
+      lat: z.latitude,
+      lng: z.longitude,
+      radius: z.radius_meters,
+      color: z.severity === 'critical' ? '#dc2626' : z.severity === 'high' ? '#ea580c' : z.severity === 'medium' ? '#f59e0b' : '#3b82f6',
+    })),
+  [tracking.dangerZones]);
 
   const scoreColor = tracking.safetyScore >= 80 ? 'text-green-600'
     : tracking.safetyScore >= 60 ? 'text-amber-600'
@@ -82,6 +99,24 @@ export function TouristDashboard() {
         <div className="flex items-center gap-2 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           {tracking.error}
+        </div>
+      )}
+
+      {/* Danger Zone Warning Banner */}
+      {tracking.nearbyDangerZones.length > 0 && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200 animate-in fade-in duration-300">
+          <AlertOctagon className="w-5 h-5 text-red-600 shrink-0 mt-0.5 animate-pulse" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-red-800 text-sm">
+              Warning: {tracking.nearbyDangerZones.length} active danger zone{tracking.nearbyDangerZones.length > 1 ? 's' : ''} near you!
+            </h3>
+            <p className="text-sm text-red-700 mt-1">
+              {tracking.nearbyDangerZones.map((z) => z.name).join(', ')} — avoid these areas.
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => navigate('/app/danger-zones')}>
+            View Map
+          </Button>
         </div>
       )}
 
@@ -222,6 +257,7 @@ export function TouristDashboard() {
                 center={tracking.currentPos}
                 zoom={16}
                 markers={markers}
+                circles={dangerCircles}
                 className="w-full h-full"
               />
             ) : (
