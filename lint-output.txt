@@ -1,0 +1,120 @@
+
+> vite-react-typescript-starter@0.0.0 lint
+> eslint .
+
+
+/tmp/cc-agent/69528599/project/src/components/AppLayout.tsx
+  6:3  error  'Navigation' is defined but never used  @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/lib/auth.tsx
+  102:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  108:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/tmp/cc-agent/69528599/project/src/lib/destinationModel.ts
+  47:10  error  'normalize' is defined but never used  @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/lib/monitoring.tsx
+  13:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/tmp/cc-agent/69528599/project/src/lib/notifications.tsx
+  17:20  error    'profile' is assigned a value but never used                                                                                    @typescript-eslint/no-unused-vars
+  84:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/tmp/cc-agent/69528599/project/src/lib/safetyModel.ts
+  55:10  error  'normalize' is defined but never used  @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/lib/useLocationTracking.ts
+    6:27  error    'predictFromHistory' is defined but never used                                                                                                 @typescript-eslint/no-unused-vars
+    7:15  error    'LocationUpdate' is defined but never used                                                                                                     @typescript-eslint/no-unused-vars
+    8:29  error    'formatSpeed' is defined but never used                                                                                                        @typescript-eslint/no-unused-vars
+    8:42  error    'timeAgo' is defined but never used                                                                                                            @typescript-eslint/no-unused-vars
+    8:51  error    'cn' is defined but never used                                                                                                                 @typescript-eslint/no-unused-vars
+   52:10  error    'sosTriggered' is assigned a value but never used                                                                                              @typescript-eslint/no-unused-vars
+  130:5   warning  React Hook useCallback has unnecessary dependencies: 'getEmergencyContacts' and 'session'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+/tmp/cc-agent/69528599/project/src/lib/useNearbySearch.ts
+  2:10  error  'GoogleMap' is defined but never used  @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/pages/AdminDangerZonesPage.tsx
+  11:7   error  'haversineDistance' is defined but never used  @typescript-eslint/no-unused-vars
+  11:26  error  'formatDistance' is defined but never used     @typescript-eslint/no-unused-vars
+  11:42  error  'timeAgo' is defined but never used            @typescript-eslint/no-unused-vars
+  57:86  error  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+/tmp/cc-agent/69528599/project/src/pages/AdminDashboard.tsx
+    3:3   error    'LayoutDashboard' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+    4:19  error    'Clock' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+    4:26  error    'TrendingUp' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+    5:3   error    'Phone' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+    5:10  error    'Navigation' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+    5:22  error    'Eye' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+   48:86  error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  153:6   warning  React Hook useCallback has a missing dependency: 'playAlertSound'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/tmp/cc-agent/69528599/project/src/pages/AuthPage.tsx
+  2:23  error  'Link' is defined but never used  @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/pages/BuddyGroupsPage.tsx
+   3:10  error  'UserPlus' is defined but never used  @typescript-eslint/no-unused-vars
+   4:46  error  'Search' is defined but never used    @typescript-eslint/no-unused-vars
+  11:10  error  'cn' is defined but never used        @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/pages/DangerZonesPage.tsx
+   3:34  error  'Filter' is defined but never used                    @typescript-eslint/no-unused-vars
+  12:49  error  'dangerZoneSeverityBg' is defined but never used      @typescript-eslint/no-unused-vars
+  20:7   error  'ZONE_TYPE_ICONS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  30:11  error  'profile' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  39:86  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+
+/tmp/cc-agent/69528599/project/src/pages/DestinationSafetyPage.tsx
+   4:38  error  'ChevronDown' is defined but never used  @typescript-eslint/no-unused-vars
+   4:51  error  'Navigation' is defined but never used   @typescript-eslint/no-unused-vars
+   9:16  error  'Button' is defined but never used       @typescript-eslint/no-unused-vars
+   9:38  error  'Select' is defined but never used       @typescript-eslint/no-unused-vars
+  10:49  error  'timeAgo' is defined but never used      @typescript-eslint/no-unused-vars
+  12:64  error  'Season' is defined but never used       @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/pages/HospitalsPage.tsx
+  4:3   error  'MapPin' is defined but never used  @typescript-eslint/no-unused-vars
+  4:11  error  'Clock' is defined but never used   @typescript-eslint/no-unused-vars
+  8:26  error  'cn' is defined but never used      @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/pages/IncidentReportPage.tsx
+   3:18  error  'Upload' is defined but never used       @typescript-eslint/no-unused-vars
+   4:12  error  'ImageIcon' is defined but never used    @typescript-eslint/no-unused-vars
+   4:26  error  'AlertCircle' is defined but never used  @typescript-eslint/no-unused-vars
+  11:44  error  'formatDate' is defined but never used   @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/pages/LiveLocationPage.tsx
+  1:28  error  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+  5:50  error  'Maximize2' is defined but never used  @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/pages/NearbyServicesPage.tsx
+   3:3   error    'MapPin' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   4:10  error    'Clock' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   7:24  error    'Input' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+  49:86  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  69:6   warning  React Hook useEffect has a missing dependency: 'searchNearby'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/tmp/cc-agent/69528599/project/src/pages/SettingsPage.tsx
+  9:16  error  'Button' is defined but never used  @typescript-eslint/no-unused-vars
+  9:24  error  'Badge' is defined but never used   @typescript-eslint/no-unused-vars
+
+/tmp/cc-agent/69528599/project/src/pages/TouristDashboard.tsx
+   4:37  error  'Activity' is defined but never used      @typescript-eslint/no-unused-vars
+   5:45  error  'TrendingDown' is defined but never used  @typescript-eslint/no-unused-vars
+   5:59  error  'TrendingUp' is defined but never used    @typescript-eslint/no-unused-vars
+  20:86  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/tmp/cc-agent/69528599/project/supabase/functions/safety-predict/index.ts
+  260:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  292:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  391:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  477:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  559:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/tmp/cc-agent/69528599/project/supabase/functions/send-emergency-email/index.ts
+  1:10  error  'createClient' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 69 problems (62 errors, 7 warnings)
+

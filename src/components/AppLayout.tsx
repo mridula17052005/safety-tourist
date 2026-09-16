@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   Shield, LayoutDashboard, Users, MapPin, Siren, Lightbulb,
   Bell, User as UserIcon, Menu, X, LogOut, AlertTriangle, Settings as SettingsIcon,
-  Navigation, Building2, Crosshair, AlertOctagon, Compass,
+  Building2, Crosshair, AlertOctagon, Compass,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useNotifications } from '@/lib/notifications';
