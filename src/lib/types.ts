@@ -118,7 +118,7 @@ export interface SafetyTip {
 }
 
 export type DangerZoneSeverity = 'low' | 'medium' | 'high' | 'critical';
-export type DangerZoneType = 'general' | 'crime' | 'nightlife' | 'scam' | 'natural_hazard' | 'civil_unrest';
+export type DangerZoneType = 'general' | 'crime' | 'nightlife' | 'scam' | 'natural_hazard' | 'civil_unrest' | 'weather';
 
 export interface DangerZone {
   id: string;
@@ -135,4 +135,8 @@ export interface DangerZone {
   reported_by: string | null;
   created_at: string;
   updated_at: string;
+  is_temporary: boolean;
+  warning_message: string | null;
+  expires_at: string | null;
+  weather_reason: string | null;
 }

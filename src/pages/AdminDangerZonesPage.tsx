@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   AlertTriangle, Plus, Edit2, Trash2, MapPin, Search,
   RefreshCw, ShieldAlert, X, Loader2, Eye, EyeOff,
+  Clock, CloudRain, CalendarClock,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { GoogleMap } from '@/components/GoogleMap';
+import { GoogleMap, type GoogleMapHandle } from '@/components/GoogleMap';
 import { Card, Badge, Button, Input, Select, Textarea, Modal, EmptyState } from '@/components/ui';
 import {
-  cn, haversineDistance, formatDistance, timeAgo,
-  dangerZoneTypeLabel, dangerZoneSeverityColor,
+  cn, dangerZoneTypeLabel, dangerZoneSeverityColor, formatDateTime,
 } from '@/lib/utils';
 import type { DangerZone, DangerZoneSeverity, DangerZoneType } from '@/lib/types';
 
@@ -27,6 +27,10 @@ interface ZoneForm {
   zone_type: DangerZoneType;
   country: string;
   city: string;
+  is_temporary: boolean;
+  weather_reason: string;
+  warning_message: string;
+  expires_at: string;
 }
 
 const EMPTY_FORM: ZoneForm = {
@@ -39,6 +43,10 @@ const EMPTY_FORM: ZoneForm = {
   zone_type: 'general',
   country: '',
   city: '',
+  is_temporary: false,
+  weather_reason: '',
+  warning_message: '',
+  expires_at: '',
 };
 
 export function AdminDangerZonesPage() {
@@ -54,7 +62,26 @@ export function AdminDangerZonesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [mapClickMode, setMapClickMode] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const mapRef = useRef<{ panTo: (lat: number, lng: number) => void; setMarkers: (m: any[]) => void }>(null);
+  const mapRef = useRef<GoogleMapHandle>(null);
+
+  // Client-side auto-expiry: deactivate expired temporary zones in the local list
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setZones((prev) => {
+        const now = new Date().toISOString();
+        const changed = prev.some(
+          (z) => z.is_temporary && z.is_active && z.expires_at && z.expires_at < now,
+        );
+        if (!changed) return prev;
+        return prev.map((z) =>
+          z.is_temporary && z.is_active && z.expires_at && z.expires_at < now
+            ? { ...z, is_active: false }
+            : z,
+        );
+      });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchZones = useCallback(async () => {
     setLoading(true);
@@ -141,6 +168,10 @@ export function AdminDangerZonesPage() {
       zone_type: zone.zone_type,
       country: zone.country || '',
       city: zone.city || '',
+      is_temporary: zone.is_temporary ?? false,
+      weather_reason: zone.weather_reason || '',
+      warning_message: zone.warning_message || '',
+      expires_at: zone.expires_at ? zone.expires_at.slice(0, 16) : '',
     });
     setFormError(null);
     setModalOpen(true);
@@ -178,7 +209,7 @@ export function AdminDangerZonesPage() {
     }
 
     setSaving(true);
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: form.name.trim(),
       description: form.description.trim() || null,
       latitude: lat,
@@ -189,7 +220,29 @@ export function AdminDangerZonesPage() {
       country: form.country.trim() || null,
       city: form.city.trim() || null,
       reported_by: profile?.id || null,
+      is_temporary: form.is_temporary,
+      weather_reason: form.is_temporary ? (form.weather_reason.trim() || null) : null,
+      warning_message: form.is_temporary ? (form.warning_message.trim() || null) : null,
+      expires_at: form.is_temporary && form.expires_at ? new Date(form.expires_at).toISOString() : null,
     };
+
+    if (form.is_temporary) {
+      if (!form.weather_reason.trim()) {
+        setFormError('Weather reason is required for temporary zones');
+        setSaving(false);
+        return;
+      }
+      if (!form.expires_at) {
+        setFormError('Expiry date is required for temporary zones');
+        setSaving(false);
+        return;
+      }
+      if (new Date(form.expires_at) <= new Date()) {
+        setFormError('Expiry date must be in the future');
+        setSaving(false);
+        return;
+      }
+    }
 
     let saveError: string | null = null;
 
@@ -236,6 +289,7 @@ export function AdminDangerZonesPage() {
     active: zones.filter((z) => z.is_active).length,
     critical: zones.filter((z) => z.severity === 'critical' && z.is_active).length,
     high: zones.filter((z) => z.severity === 'high' && z.is_active).length,
+    temporary: zones.filter((z) => z.is_temporary && z.is_active).length,
   }), [zones]);
 
   return (
@@ -289,6 +343,13 @@ export function AdminDangerZonesPage() {
             <span className="text-xs font-medium text-slate-500">High Risk</span>
           </div>
           <p className="text-2xl font-bold text-orange-600">{stats.high}</p>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <CloudRain className="w-4 h-4 text-blue-500" />
+            <span className="text-xs font-medium text-slate-500">Weather Zones</span>
+          </div>
+          <p className="text-2xl font-bold text-blue-600">{stats.temporary}</p>
         </Card>
       </div>
 
@@ -378,6 +439,11 @@ export function AdminDangerZonesPage() {
                       <Badge className={dangerZoneSeverityColor(zone.severity)}>
                         {zone.severity.toUpperCase()}
                       </Badge>
+                      {zone.is_temporary && zone.is_active && (
+                        <Badge className="bg-blue-100 text-blue-700">
+                          <CloudRain className="w-3 h-3 mr-0.5" />TEMPORARY
+                        </Badge>
+                      )}
                       {!zone.is_active && <Badge className="bg-slate-200 text-slate-600">INACTIVE</Badge>}
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
@@ -386,6 +452,26 @@ export function AdminDangerZonesPage() {
                       {zone.country && `, ${zone.country}`}
                     </p>
                     <p className="text-sm text-slate-600 mt-1 line-clamp-2">{zone.description}</p>
+                    {zone.is_temporary && zone.weather_reason && (
+                      <div className="flex items-center gap-1.5 mt-1.5 text-xs text-blue-600">
+                        <CloudRain className="w-3 h-3" />
+                        <span className="font-medium">{zone.weather_reason}</span>
+                      </div>
+                    )}
+                    {zone.is_temporary && zone.warning_message && (
+                      <p className="text-xs text-amber-700 mt-1 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                        {zone.warning_message}
+                      </p>
+                    )}
+                    {zone.is_temporary && zone.expires_at && (
+                      <div className="flex items-center gap-1.5 mt-1.5 text-xs text-slate-500">
+                        <CalendarClock className="w-3 h-3" />
+                        <span>Expires: {formatDateTime(zone.expires_at)}</span>
+                        {!zone.is_active && zone.expires_at < new Date().toISOString() && (
+                          <Badge className="bg-slate-200 text-slate-500 ml-1">EXPIRED</Badge>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center gap-3 mt-2">
                       <button
                         onClick={() => openEditModal(zone)}
@@ -500,6 +586,7 @@ export function AdminDangerZonesPage() {
             <option value="scam">Tourist Scam</option>
             <option value="civil_unrest">Civil Unrest</option>
             <option value="natural_hazard">Natural Hazard</option>
+            <option value="weather">Weather Warning</option>
           </Select>
 
           <div className="grid grid-cols-2 gap-3">
@@ -516,6 +603,48 @@ export function AdminDangerZonesPage() {
               onChange={(e) => setForm({ ...form, country: e.target.value })}
             />
           </div>
+
+          {/* Temporary Weather Zone Section */}
+          <div className="rounded-lg border border-slate-200 p-4 space-y-3 bg-slate-50">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.is_temporary}
+                onChange={(e) => setForm({ ...form, is_temporary: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                <CloudRain className="w-4 h-4 text-blue-500" />
+                Temporary Weather Danger Zone
+              </span>
+            </label>
+            <p className="text-xs text-slate-500">
+              Mark this zone as temporary with an automatic expiry date. The zone will be removed from tourist maps when it expires.
+            </p>
+          </div>
+
+          {form.is_temporary && (
+            <>
+              <Input
+                label="Weather Reason"
+                placeholder="e.g., Heavy Rain, Flooding, Hurricane"
+                value={form.weather_reason}
+                onChange={(e) => setForm({ ...form, weather_reason: e.target.value })}
+              />
+              <Textarea
+                label="Warning Message"
+                placeholder="e.g., Do not enter this area during heavy rain. Risk of flooding and landslides."
+                value={form.warning_message}
+                onChange={(e) => setForm({ ...form, warning_message: e.target.value })}
+              />
+              <Input
+                label="Expiry Date & Time"
+                type="datetime-local"
+                value={form.expires_at}
+                onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
+              />
+            </>
+          )}
 
           <div className="flex items-center gap-3 pt-2">
             <Button variant="outline" onClick={() => setModalOpen(false)} className="flex-1">

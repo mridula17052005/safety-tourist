@@ -338,7 +338,14 @@ export function useLocationTrackingBase(): UseLocationTrackingResult {
         .from('danger_zones')
         .select('*')
         .eq('is_active', true);
-      if (data) setDangerZones(data as DangerZone[]);
+      if (data) {
+        // Filter out expired temporary zones client-side for immediate visual update
+        const now = new Date().toISOString();
+        const active = (data as DangerZone[]).filter(
+          (z) => !(z.is_temporary && z.expires_at && z.expires_at < now),
+        );
+        setDangerZones(active);
+      }
     };
     fetchZones();
 

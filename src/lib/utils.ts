@@ -148,6 +148,7 @@ export function dangerZoneTypeLabel(type: string): string {
     scam: 'Tourist Scam',
     natural_hazard: 'Natural Hazard',
     civil_unrest: 'Civil Unrest',
+    weather: 'Weather Warning',
   };
   return labels[type] ?? type;
 }

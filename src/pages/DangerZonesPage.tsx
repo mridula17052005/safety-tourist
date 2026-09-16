@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
-  AlertTriangle, MapPin, Search, Filter, ShieldAlert,
-  Navigation, Info, Crosshair, Globe, Loader2,
+  AlertTriangle, MapPin, Search, ShieldAlert,
+  Info, Crosshair, Globe, Loader2, CloudRain, CalendarClock, Clock, Navigation,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { GoogleMap } from '@/components/GoogleMap';
+import { GoogleMap, type GoogleMapHandle } from '@/components/GoogleMap';
 import { Card, Badge, Button, Input, Select, EmptyState } from '@/components/ui';
 import {
   cn, haversineDistance, formatDistance, timeAgo,
-  dangerZoneTypeLabel, dangerZoneSeverityColor, dangerZoneSeverityBg,
+  dangerZoneTypeLabel, dangerZoneSeverityColor, formatDateTime,
 } from '@/lib/utils';
 import type { DangerZone, DangerZoneSeverity, DangerZoneType } from '@/lib/types';
 
@@ -24,6 +24,7 @@ const ZONE_TYPE_ICONS: Record<DangerZoneType, string> = {
   scam: 'AlertTriangle',
   natural_hazard: 'AlertTriangle',
   civil_unrest: 'AlertTriangle',
+  weather: 'CloudRain',
 };
 
 export function DangerZonesPage() {
@@ -36,7 +37,20 @@ export function DangerZonesPage() {
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [selectedZone, setSelectedZone] = useState<DangerZone | null>(null);
-  const mapRef = useRef<{ panTo: (lat: number, lng: number) => void; setMarkers: (m: any[]) => void }>(null);
+  const mapRef = useRef<GoogleMapHandle>(null);
+
+  // Client-side auto-expiry: hide expired temporary zones
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setZones((prev) => {
+        const now = new Date().toISOString();
+        return prev.filter(
+          (z) => !(z.is_temporary && z.expires_at && z.expires_at < now),
+        );
+      });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchZones = useCallback(async () => {
     setLoading(true);
@@ -180,6 +194,22 @@ export function DangerZonesPage() {
         </div>
       )}
 
+      {/* Weather Warning Banner */}
+      {zonesWithDistance.some((z) => z.is_temporary) && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-300">
+          <CloudRain className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-amber-800 text-sm">
+              Active Weather Warnings
+            </h3>
+            <p className="text-sm text-amber-700 mt-1">
+              {zonesWithDistance.filter((z) => z.is_temporary).length} temporary weather danger zone{zonesWithDistance.filter((z) => z.is_temporary).length > 1 ? 's' : ''} active.
+              Do not enter or visit these areas until the weather condition clears.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Info Banner */}
       <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200">
         <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
@@ -216,6 +246,7 @@ export function DangerZonesPage() {
           <option value="scam">Tourist Scam</option>
           <option value="civil_unrest">Civil Unrest</option>
           <option value="natural_hazard">Natural Hazard</option>
+          <option value="weather">Weather Warning</option>
           <option value="general">General Risk</option>
         </Select>
       </div>
@@ -281,13 +312,23 @@ export function DangerZonesPage() {
                       : zone.severity === 'medium' ? 'bg-amber-100'
                       : 'bg-blue-100',
                   )}>
-                    <AlertTriangle className={cn(
-                      'w-5 h-5',
-                      zone.severity === 'critical' ? 'text-red-600'
-                        : zone.severity === 'high' ? 'text-orange-600'
-                        : zone.severity === 'medium' ? 'text-amber-600'
-                        : 'text-blue-600',
-                    )} />
+                    {zone.is_temporary ? (
+                      <CloudRain className={cn(
+                        'w-5 h-5',
+                        zone.severity === 'critical' ? 'text-red-600'
+                          : zone.severity === 'high' ? 'text-orange-600'
+                          : zone.severity === 'medium' ? 'text-amber-600'
+                          : 'text-blue-600',
+                      )} />
+                    ) : (
+                      <AlertTriangle className={cn(
+                        'w-5 h-5',
+                        zone.severity === 'critical' ? 'text-red-600'
+                          : zone.severity === 'high' ? 'text-orange-600'
+                          : zone.severity === 'medium' ? 'text-amber-600'
+                          : 'text-blue-600',
+                      )} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -298,6 +339,11 @@ export function DangerZonesPage() {
                       {zone.isNear && (
                         <Badge className="bg-red-500 text-white animate-pulse">NEARBY</Badge>
                       )}
+                      {zone.is_temporary && (
+                        <Badge className="bg-blue-100 text-blue-700">
+                          <CloudRain className="w-3 h-3 mr-0.5" />WEATHER
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
                       {dangerZoneTypeLabel(zone.zone_type)}
@@ -305,6 +351,26 @@ export function DangerZonesPage() {
                       {zone.country && `, ${zone.country}`}
                     </p>
                     <p className="text-sm text-slate-600 mt-2 line-clamp-2">{zone.description}</p>
+                    {zone.is_temporary && zone.weather_reason && (
+                      <div className="flex items-center gap-1.5 mt-2 text-xs text-blue-600 font-medium">
+                        <CloudRain className="w-3.5 h-3.5" />
+                        {zone.weather_reason}
+                      </div>
+                    )}
+                    {zone.is_temporary && zone.warning_message && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                        <div className="flex items-start gap-1.5">
+                          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <p className="text-xs text-amber-800 font-medium">{zone.warning_message}</p>
+                        </div>
+                      </div>
+                    )}
+                    {zone.is_temporary && zone.expires_at && (
+                      <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-500">
+                        <CalendarClock className="w-3.5 h-3.5" />
+                        <span>Active until: {formatDateTime(zone.expires_at)}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
                       <span className="flex items-center gap-1">
                         <Navigation className="w-3 h-3" />
@@ -314,7 +380,10 @@ export function DangerZonesPage() {
                         <Globe className="w-3 h-3" />
                         {formatDistance(zone.radius_meters)} radius
                       </span>
-                      <span>{timeAgo(zone.updated_at)}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {timeAgo(zone.updated_at)}
+                      </span>
                     </div>
                   </div>
                 </div>
