@@ -55,6 +55,7 @@ export function AdminDangerZonesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterSeverity, setFilterSeverity] = useState('all');
+  const [filterRegion, setFilterRegion] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingZone, setEditingZone] = useState<DangerZone | null>(null);
   const [form, setForm] = useState<ZoneForm>(EMPTY_FORM);
@@ -118,6 +119,15 @@ export function AdminDangerZonesPage() {
     return zones
       .filter((z) => {
         if (filterSeverity !== 'all' && z.severity !== filterSeverity) return false;
+        if (filterRegion !== 'all') {
+          if (filterRegion === 'Tamil Nadu') {
+            const tnCities = ['coimbatore','chennai','madurai','ooty','kodaikanal','rameswaram','mahabalipuram','yercaud','courtallam','tiruchirappalli','trichy','thanjavur','vellore'];
+            if (!tnCities.some((c) => z.city?.toLowerCase().includes(c))) return false;
+          } else {
+            const region = filterRegion.toLowerCase();
+            if (!(z.city?.toLowerCase().includes(region) || z.country?.toLowerCase().includes(region))) return false;
+          }
+        }
         if (search) {
           const q = search.toLowerCase();
           return (
@@ -129,7 +139,12 @@ export function AdminDangerZonesPage() {
         return true;
       })
       .sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
-  }, [zones, search, filterSeverity]);
+  }, [zones, search, filterSeverity, filterRegion]);
+
+  const regionOptions = useMemo(() => {
+    const cities = Array.from(new Set(zones.map((z) => z.city).filter(Boolean) as string[])).sort();
+    return cities;
+  }, [zones]);
 
   const markers = useMemo(() => {
     return filteredZones.map((z) => ({
@@ -368,6 +383,14 @@ export function AdminDangerZonesPage() {
           <option value="high">High</option>
           <option value="medium">Medium</option>
           <option value="low">Low</option>
+        </Select>
+        <Select value={filterRegion} onChange={(e) => setFilterRegion(e.target.value)} className="sm:w-40">
+          <option value="all">All Regions</option>
+          <option value="Coimbatore">Coimbatore</option>
+          <option value="Tamil Nadu">Tamil Nadu</option>
+          {regionOptions.filter((c) => !['Coimbatore'].includes(c)).map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
         </Select>
       </div>
 

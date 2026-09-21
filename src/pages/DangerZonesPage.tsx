@@ -34,6 +34,7 @@ export function DangerZonesPage() {
   const [search, setSearch] = useState('');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterRegion, setFilterRegion] = useState<string>('all');
   const [currentPos, setCurrentPos] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [selectedZone, setSelectedZone] = useState<DangerZone | null>(null);
@@ -110,6 +111,19 @@ export function DangerZonesPage() {
       .filter((z) => {
         if (filterSeverity !== 'all' && z.severity !== filterSeverity) return false;
         if (filterType !== 'all' && z.zone_type !== filterType) return false;
+        if (filterRegion !== 'all') {
+          if (filterRegion === 'Tamil Nadu') {
+            const tnCities = ['coimbatore','chennai','madurai','ooty','kodaikanal','rameswaram','mahabalipuram','yercaud','courtallam','tiruchirappalli','trichy','thanjavur','vellore'];
+            if (!tnCities.some((c) => z.city?.toLowerCase().includes(c))) return false;
+          } else {
+            const region = filterRegion.toLowerCase();
+            if (
+              !(z.city?.toLowerCase().includes(region) ||
+                z.country?.toLowerCase().includes(region) ||
+                z.name?.toLowerCase().includes(region))
+            ) return false;
+          }
+        }
         if (search) {
           const q = search.toLowerCase();
           return (
@@ -125,9 +139,14 @@ export function DangerZonesPage() {
         if (a.distance != null && b.distance != null) return a.distance - b.distance;
         return SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
       });
-  }, [zones, currentPos, search, filterSeverity, filterType]);
+  }, [zones, currentPos, search, filterSeverity, filterType, filterRegion]);
 
   const nearbyZones = zonesWithDistance.filter((z) => z.isNear);
+
+  const regionOptions = useMemo(() => {
+    const cities = Array.from(new Set(zones.map((z) => z.city).filter(Boolean) as string[])).sort();
+    return cities;
+  }, [zones]);
 
   const markers = useMemo(() => {
     const zoneMarkers = zonesWithDistance.map((z) => ({
@@ -248,6 +267,14 @@ export function DangerZonesPage() {
           <option value="natural_hazard">Natural Hazard</option>
           <option value="weather">Weather Warning</option>
           <option value="general">General Risk</option>
+        </Select>
+        <Select value={filterRegion} onChange={(e) => setFilterRegion(e.target.value)} className="sm:w-40">
+          <option value="all">All Regions</option>
+          <option value="Coimbatore">Coimbatore</option>
+          <option value="Tamil Nadu">Tamil Nadu</option>
+          {regionOptions.filter((c) => !['Coimbatore'].includes(c)).map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
         </Select>
       </div>
 
